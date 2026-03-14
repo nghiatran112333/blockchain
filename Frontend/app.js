@@ -10,6 +10,9 @@ const abi = [
   "function getConfirmationCount(uint256) view returns(uint256)",
   "function confirmations(uint256,address) view returns(bool)",
   "function required() view returns(uint256)",
+
+  "function closeChannel(uint256,uint256,bytes)",
+  "function getMessageHash(uint256,uint256) view returns(bytes32)",
 ];
 let provider;
 let signer;
@@ -163,4 +166,45 @@ async function loadTransactions() {
   document.getElementById("doneTx").innerText = executed;
 
   document.getElementById("pendingTx").innerText = pending;
+}
+async function signPayment() {
+  try {
+    const amount = document.getElementById("payAmount").value;
+    const nonce = document.getElementById("nonce").value;
+
+    const messageHash = ethers.utils.solidityKeccak256(
+      ["uint256", "uint256"],
+      [ethers.utils.parseEther(amount), nonce],
+    );
+
+    const signature = await signer.signMessage(
+      ethers.utils.arrayify(messageHash),
+    );
+
+    document.getElementById("signature").value = signature;
+
+    alert("Đã ký giao dịch off-chain");
+  } catch (err) {
+    console.log(err);
+  }
+}
+async function closeChannel() {
+  try {
+    const amount = document.getElementById("payAmount").value;
+    const nonce = document.getElementById("nonce").value;
+    const signature = document.getElementById("signature").value;
+
+    const tx = await contract.closeChannel(
+      ethers.utils.parseEther(amount),
+      nonce,
+      signature,
+    );
+
+    await tx.wait();
+
+    alert("Thanh toán micropayment thành công");
+  } catch (err) {
+    console.log(err);
+    alert(err.reason || err.message);
+  }
 }
