@@ -59,12 +59,12 @@ async function connectWallet() {
         await provider.send("eth_requestAccounts", []);
         
         // Check Network (Sử dụng 1337 đồng bộ với Ganache hiện tại)
+        // Check Network (11155111 - Sepolia)
         const network = await provider.getNetwork();
-        const targetChainId = 1337; 
-        const targetChainIdHex = '0x539'; 
-
-        if (network.chainId !== targetChainId && network.chainId !== 11155111) {
-            showToast("Đang yêu cầu MetaMask chuyển sang mạng Ganache...", "info");
+        const targetChainId = 11155111; 
+        const targetChainIdHex = '0xaa36a7'; 
+        
+        if (network.chainId !== targetChainId) {
             try {
                 await window.ethereum.request({
                     method: 'wallet_switchEthereumChain',
@@ -72,30 +72,16 @@ async function connectWallet() {
                 });
             } catch (switchError) {
                 if (switchError.code === 4902) {
-                    try {
-                        const currentIP = window.location.hostname;
-                        const rpcUrl = currentIP === 'localhost' || currentIP === '127.0.0.1' 
-                            ? 'http://127.0.0.1:7545' 
-                            : `http://${currentIP}:7545`;
-
-                        await window.ethereum.request({
-                            method: 'wallet_addEthereumChain',
-                            params: [{
-                                chainId: targetChainIdHex,
-                                chainName: 'Ganache Local',
-                                rpcUrls: [rpcUrl],
-                                nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 }
-                            }]
-                        });
-                    } catch (addError) {
-                        showToast("Lỗi khi thêm mạng Ganache!", "error");
-                        setBtnLoading("connectBtn", false);
-                        return;
-                    }
-                } else {
-                    showToast("Vui lòng xác nhận chuyển mạng!", "error");
-                    setBtnLoading("connectBtn", false);
-                    return;
+                    await window.ethereum.request({
+                        method: 'wallet_addEthereumChain',
+                        params: [{
+                            chainId: targetChainIdHex,
+                            chainName: 'Sepolia Test Network',
+                            nativeCurrency: { name: 'Sepolia ETH', symbol: 'ETH', decimals: 18 },
+                            rpcUrls: ['https://rpc.sepolia.org'],
+                            blockExplorerUrls: ['https://sepolia.etherscan.io']
+                        }],
+                    });
                 }
             }
             provider = new ethers.providers.Web3Provider(window.ethereum);
