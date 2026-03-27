@@ -55,27 +55,26 @@
       </header>
 
       <!-- Stats Grid -->
-      <div class="grid">
-        <div class="card balance-card">
-          <p style="opacity: 0.9; font-weight: 500;">Số dư hệ thống</p>
-          <div class="stat-value" id="systemBalance">0.00 ETH</div>
-          <button class="btn" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white;" onclick="withdrawFunds()">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
-            Rút tiền
-          </button>
+      <div class="grid stats-grid">
+        <div class="card">
+          <p style="color: var(--text-muted); font-weight: 500;">Doanh thu (Sau phí)</p>
+          <div class="stat-value" id="totalRevenue" style="color: #10b981;">0 ETH</div>
+          <p style="color: var(--text-muted); font-size: 0.85rem;">Thanh toán đã trừ 1% phí</p>
         </div>
         <div class="card">
-          <div style="display: flex; justify-content: space-between; align-items: center;">
-              <p style="color: var(--text-muted); font-weight: 500;">Thu nhập hôm nay</p>
-              <div class="status-badge status-success">+12%</div>
-          </div>
-          <div class="stat-value" style="color: var(--success); font-family: 'Outfit';">+0.52 ETH</div>
-          <p style="color: var(--text-muted); font-size: 0.85rem;">Cập nhật 5 phút trước</p>
+          <p style="color: var(--text-muted); font-weight: 500;">Phí nền tảng (1%)</p>
+          <div class="stat-value" id="totalFees" style="color: #ef4444;">0 ETH</div>
+          <p style="color: var(--text-muted); font-size: 0.85rem;">Tổng phí đã gửi platform</p>
         </div>
         <div class="card">
-          <p style="color: var(--text-muted); font-weight: 500;">Tổng giao dịch</p>
+          <p style="color: var(--text-muted); font-weight: 500;">Tổng đã rút</p>
+          <div class="stat-value" id="totalWithdrawn">0 ETH</div>
+          <p style="color: var(--text-muted); font-size: 0.85rem;">Tiền đã chuyển về ví cá nhân</p>
+        </div>
+        <div class="card">
+          <p style="color: var(--text-muted); font-weight: 500;">Giao dịch</p>
           <div class="stat-value" id="totalTx">0</div>
-          <p style="color: var(--text-muted); font-size: 0.85rem;">Toàn thời gian</p>
+          <p style="color: var(--text-muted); font-size: 0.85rem;">Tổng số hóa đơn đã quét</p>
         </div>
       </div>
 
