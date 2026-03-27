@@ -47,8 +47,10 @@ async function connectWallet() {
         
         const btn = document.getElementById("connectBtn");
         if (btn) {
-            btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg> Đã kết nối`;
+            const connectedText = "Đã kết nối";
+            btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg> ${connectedText}`;
             btn.style.backgroundColor = "#10b981";
+            btn.dataset.originalText = connectedText; // Cập nhật để setBtnLoading không ghi đè lại
         }
         
         showToast("Kết nối ví thành công!", "success");
