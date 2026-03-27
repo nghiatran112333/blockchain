@@ -214,6 +214,12 @@
         }
     }
 
+    // Lắng nghe sự kiện đổi mạng để tự động Reload (Fix lỗi underlying network changed)
+    if (window.ethereum) {
+        window.ethereum.on('chainChanged', (_chainId) => window.location.reload());
+        window.ethereum.on('accountsChanged', (_accounts) => window.location.reload());
+    }
+
     window.onload = init;
   </script>
 </body>

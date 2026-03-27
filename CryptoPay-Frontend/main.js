@@ -296,6 +296,12 @@ window.addEventListener('load', () => {
             }
         });
     }
+
+    // Lắng nghe sự kiện đổi mạng/tài khoản (Fix lỗi đồng bộ)
+    if (window.ethereum) {
+        window.ethereum.on('chainChanged', (_chainId) => window.location.reload());
+        window.ethereum.on('accountsChanged', (_accounts) => window.location.reload());
+    }
 });
 
 function displayNetworkInfo() {
