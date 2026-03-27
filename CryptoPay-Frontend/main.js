@@ -269,70 +269,83 @@ async function withdrawFunds() {
 }
 
 
+let isFetchingData = false;
+
 // HÀM QUAN TRỌNG: Load dữ liệu và tính toán thống kê cùng lúc
 async function loadDataAndStats() {
     const table = document.getElementById("txTable");
-    if (!table || !contract || !currentAccount) return;
+    if (!table || !contract || !currentAccount || isFetchingData) return;
     
     try {
-        console.log("Đang đồng bộ dữ liệu Blockchain cho:", currentAccount);
+        isFetchingData = true;
+        console.log("Đang đồng bộ dữ liệu Blockchain...");
         
-        // 1. Lấy tất cả các sự kiện PaymentProcessed
-        const payFilter = contract.filters.PaymentProcessed(null, currentAccount);
-        const payLogs = await contract.queryFilter(payFilter, 0);
+        // 1. Lấy tất cả sự kiện song song để tối ưu tốc độ
+        const [payLogs, withdrawLogs] = await Promise.all([
+            contract.queryFilter(contract.filters.PaymentProcessed(null, currentAccount), 0),
+            contract.queryFilter(contract.filters.Withdrawal(currentAccount), 0)
+        ]);
         
-        // 2. Lấy tất cả các sự kiện Withdrawal
-        const withdrawFilter = contract.filters.Withdrawal(currentAccount);
-        const withdrawLogs = await contract.queryFilter(withdrawFilter, 0);
-
         // Biến tính toán
         let totalRevenueNet = ethers.BigNumber.from(0);
         let totalFeesPaid = ethers.BigNumber.from(0);
         let totalWithdrawn = ethers.BigNumber.from(0);
         
-        // Xử lý thống kê thanh toán
-        table.innerHTML = "";
+        let tableHtml = "";
+        
         if (payLogs.length === 0) {
-            table.innerHTML = `<tr><td colspan="6" style="text-align:center; opacity:0.5; padding: 2rem;">Chưa có giao dịch minh bạch nào</td></tr>`;
+            tableHtml = `<tr><td colspan="6" style="text-align:center; opacity:0.5; padding: 2rem;">Chưa có giao dịch minh bạch nào</td></tr>`;
         } else {
             const reversedLogs = payLogs.slice().reverse();
-            for (const log of reversedLogs) {
-                // Ethers v5 args parsing
+            // Chỉ lấy tối đa 20 giao dịch gần nhất
+            const displayLogs = reversedLogs.slice(0, 20);
+            
+            // Dùng Promise.all để lấy thông tin block nhanh hơn
+            const rows = await Promise.all(displayLogs.map(async (log) => {
                 const customer = log.args.customer;
                 const amount = log.args.amount;
                 const fee = log.args.fee || ethers.BigNumber.from(0);
                 const net = amount.sub(fee);
 
-                // Cộng dồn thống kê
                 totalRevenueNet = totalRevenueNet.add(net);
                 totalFeesPaid = totalFeesPaid.add(fee);
 
-                // Render row (chỉ render 20 cái gần nhất cho nhanh)
-                if (table.children.length < 20) {
-                    const block = await log.getBlock();
-                    const date = new Date(block.timestamp * 1000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                    const etherscanUrl = `https://sepolia.etherscan.io/tx/${log.transactionHash}`;
+                const block = await log.getBlock();
+                const date = new Date(block.timestamp * 1000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                const etherscanUrl = `https://sepolia.etherscan.io/tx/${log.transactionHash}`;
 
-                    table.innerHTML += `
-                        <tr>
-                            <td><a href="${etherscanUrl}" target="_blank" style="color:var(--text-muted); text-decoration:none;">#${log.blockNumber} ↗</a></td>
-                            <td>${customer.substring(0,6)}...${customer.substring(38)}</td>
-                            <td style="color:var(--text-muted); font-size:0.8rem; text-decoration:line-through;">${ethers.utils.formatEther(amount)}</td>
-                            <td><span style="color:#ef4444; font-size:0.8rem;">-${ethers.utils.formatEther(fee)}</span></td>
-                            <td><span style="color:#10b981; font-weight:700;">+${ethers.utils.formatEther(net)} ETH</span></td>
-                            <td style="font-size:0.8rem; opacity:0.7;">${date}</td>
-                        </tr>
-                    `;
+                return `
+                    <tr>
+                        <td><a href="${etherscanUrl}" target="_blank" style="color:var(--text-muted); text-decoration:none;">#${log.blockNumber} ↗</a></td>
+                        <td>${customer.substring(0,6)}...${customer.substring(38)}</td>
+                        <td style="color:var(--text-muted); font-size:0.8rem; text-decoration:line-through;">${ethers.utils.formatEther(amount)}</td>
+                        <td><span style="color:#ef4444; font-size:0.8rem;">-${ethers.utils.formatEther(fee)}</span></td>
+                        <td><span style="color:#10b981; font-weight:700;">+${ethers.utils.formatEther(net)} ETH</span></td>
+                        <td style="font-size:0.8rem; opacity:0.7;">${date}</td>
+                    </tr>
+                `;
+            }));
+            
+            // Tính toán nốt phần doanh thu cho các log cũ hơn 20 cái đầu
+            if (reversedLogs.length > 20) {
+                for(let i=20; i < reversedLogs.length; i++) {
+                    const amount = reversedLogs[i].args.amount;
+                    const fee = reversedLogs[i].args.fee || ethers.BigNumber.from(0);
+                    totalRevenueNet = totalRevenueNet.add(amount.sub(fee));
+                    totalFeesPaid = totalFeesPaid.add(fee);
                 }
             }
+            
+            tableHtml = rows.join('');
         }
 
-        // Xử lý thống kê rút tiền
+        // Thống kê rút tiền
         withdrawLogs.forEach(log => {
             totalWithdrawn = totalWithdrawn.add(log.args.amount);
         });
 
-        // Cập nhật UI Stats
+        // Cập nhật UI một lần duy nhất (Batch update)
+        table.innerHTML = tableHtml;
         updateUIStat("totalRevenue", ethers.utils.formatEther(totalRevenueNet) + " ETH");
         updateUIStat("totalFees", ethers.utils.formatEther(totalFeesPaid) + " ETH");
         updateUIStat("totalWithdrawn", ethers.utils.formatEther(totalWithdrawn) + " ETH");
@@ -340,7 +353,8 @@ async function loadDataAndStats() {
 
     } catch (e) { 
         console.error("Lỗi đồng bộ dữ liệu:", e); 
-        showToast("Lỗi đồng bộ dữ liệu từ Blockchain", "error");
+    } finally {
+        isFetchingData = false;
     }
 }
 
