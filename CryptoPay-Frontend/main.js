@@ -169,15 +169,20 @@ function generateQR() {
     qrDiv.style.opacity = "0.5";
     
     setTimeout(() => {
-        const origin = window.location.origin;
+        let origin = window.location.origin;
         const currentIP = window.location.hostname;
         
-        if (currentIP === 'localhost' || currentIP === '127.0.0.1') {
-            showToast("CẢNH BÁO: Bạn đang dùng localhost. Điện thoại sẽ KHÔNG quét được! Hãy đưa lên Hosting (Vercel) để có link thật.", "warning");
+        // Tạo MetaMask Deep Link nếu đang ở trên Hosting (không phải localhost)
+        let qrData = `${origin}/pay.html?merchant=${currentAccount}&amount=${amount}`;
+        
+        if (currentIP !== 'localhost' && currentIP !== '127.0.0.1') {
+            // Loại bỏ http/https để tạo deep link chuẩn của MetaMask
+            const cleanOrigin = origin.replace(/^https?:\/\//, '');
+            qrData = `https://metamask.app.link/dapp/${cleanOrigin}/pay.html?merchant=${currentAccount}&amount=${amount}`;
+        } else {
+            showToast("CẢNH BÁO: Đang dùng localhost. Hãy đưa lên Vercel để dùng Deep Link!", "warning");
         }
 
-        const qrData = `${origin}/pay.html?merchant=${currentAccount}&amount=${amount}`;
-        
         new QRCode(qrDiv, {
             text: qrData,
             width: 180,
@@ -189,15 +194,21 @@ function generateQR() {
         
         qrDiv.style.opacity = "1";
         document.getElementById("qrLabel").innerText = `Quét để trả ${amount} ETH`;
-        document.getElementById("copyContainer").style.display = "flex"; // Hiện nút copy
+        // document.getElementById("copyContainer").style.display = "flex"; // Nút copy đã bị ẩn theo yêu cầu
         showToast("Đã tạo mã QR thanh toán!", "success");
     }, 300);
 }
 
 function copyPaymentLink() {
     const amount = document.getElementById("amountInput").value;
-    const origin = window.location.origin;
-    const qrData = `${origin}/pay.html?merchant=${currentAccount}&amount=${amount}`;
+    let origin = window.location.origin;
+    const currentIP = window.location.hostname;
+    
+    let qrData = `${origin}/pay.html?merchant=${currentAccount}&amount=${amount}`;
+    if (currentIP !== 'localhost' && currentIP !== '127.0.0.1') {
+        const cleanOrigin = origin.replace(/^https?:\/\//, '');
+        qrData = `https://metamask.app.link/dapp/${cleanOrigin}/pay.html?merchant=${currentAccount}&amount=${amount}`;
+    }
     
     navigator.clipboard.writeText(qrData).then(() => {
         showToast("Đã copy link thanh toán!", "success");
