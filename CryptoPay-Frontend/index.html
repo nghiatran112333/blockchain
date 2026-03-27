@@ -122,22 +122,26 @@
 
       <!-- Recent Transactions -->
       <div class="card" style="margin-top: 3rem;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-            <h3>Giao dịch gần đây</h3>
-            <button class="btn" style="background: transparent; color: var(--primary); font-size: 0.9rem;" onclick="loadTransactions()">Làm mới</button>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+            <div>
+              <h3 style="font-size: 1.25rem;">Lịch sử giao dịch Minh bạch (Blockchain)</h3>
+              <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.3rem;">Dữ liệu được xác thực trực tiếp trên chuỗi Sepolia</p>
+            </div>
+            <button class="btn btn-primary" style="background: rgba(16, 185, 129, 0.1); color: #10b981; font-size: 0.85rem; border: 1px solid rgba(16, 185, 129, 0.2);" onclick="loadTransactions()">Làm mới</button>
         </div>
         <table>
           <thead>
             <tr>
-              <th>ID</th>
+              <th>Khối / Link</th>
               <th>Khách hàng</th>
-              <th>Số tiền</th>
+              <th>Giá gốc</th>
+              <th>Phí platform</th>
+              <th>Thực nhận</th>
               <th>Thời gian</th>
-              <th>Trạng thái</th>
             </tr>
           </thead>
           <tbody id="txTable">
-            <!-- Data will be injected here -->
+            <tr><td colspan="6" style="text-align:center; opacity:0.5; padding: 2rem;">Đang tải dữ liệu minh bạch...</td></tr>
           </tbody>
         </table>
       </div>
