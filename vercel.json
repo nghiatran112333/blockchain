@@ -1,0 +1,6 @@
+{
+  "public": true,
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/CryptoPay-Frontend/$1" }
+  ]
+}
