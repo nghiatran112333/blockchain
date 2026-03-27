@@ -7,7 +7,8 @@ const abi = [
     "function getMerchantInfo(address _addr) public view returns (string memory name, uint256 balance, bool isActive)",
     "function getMerchantCount() public view returns (uint256)",
     "event PaymentProcessed(address indexed customer, address indexed merchant, uint256 amount, uint256 fee)",
-    "event MerchantRegistered(address indexed merchant, string name)"
+    "event MerchantRegistered(address indexed merchant, string name)",
+    "event Withdrawal(address indexed merchant, uint256 amount)"
 ];
 
 let provider, signer, contract;
