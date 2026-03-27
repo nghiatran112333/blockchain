@@ -246,34 +246,45 @@ async function updateFinancialStats() {
     if (!contract || !currentAccount) return;
     
     try {
-        // 1. Lấy tất cả các giao dịch thanh toán để tính doanh thu & phí
+        console.log("Cập nhật số liệu tài chính cho:", currentAccount);
+        // Dùng 0 để lấy từ block đầu tiên của contract (Sepolia hỗ trợ tốt)
+        const startBlock = 0; 
+        
+        // 1. Lấy tất cả các giao dịch thanh toán
         const payFilter = contract.filters.PaymentProcessed(null, currentAccount);
-        const payLogs = await contract.queryFilter(payFilter, -10000); 
+        const payLogs = await contract.queryFilter(payFilter, startBlock); 
         
         let totalGross = ethers.BigNumber.from(0);
         let totalFees = ethers.BigNumber.from(0);
         
         payLogs.forEach(log => {
-            const amount = log.args.amount;
-            const fee = log.args.fee;
-            totalGross = totalGross.add(amount);
-            totalFees = totalFees.add(fee);
+            if (log.args && log.args.amount) {
+                totalGross = totalGross.add(log.args.amount);
+                totalFees = totalFees.add(log.args.fee || 0);
+            }
         });
 
-        // 2. Lấy tất cả các lệnh rút tiền để tính tổng đã rút
+        // 2. Lấy tất cả các lệnh rút tiền
         const withdrawFilter = contract.filters.Withdrawal(currentAccount);
-        const withdrawLogs = await contract.queryFilter(withdrawFilter, -10000);
+        const withdrawLogs = await contract.queryFilter(withdrawFilter, startBlock);
         
         let totalWithdrawn = ethers.BigNumber.from(0);
         withdrawLogs.forEach(log => {
-            totalWithdrawn = totalWithdrawn.add(log.args.amount);
+            if (log.args && log.args.amount) {
+                totalWithdrawn = totalWithdrawn.add(log.args.amount);
+            }
         });
 
-        // Cập nhật giao diện
-        document.getElementById("totalRevenue").innerText = ethers.utils.formatEther(totalGross.sub(totalFees)) + " ETH";
-        document.getElementById("totalFees").innerText = ethers.utils.formatEther(totalFees) + " ETH";
-        document.getElementById("totalWithdrawn").innerText = ethers.utils.formatEther(totalWithdrawn) + " ETH";
-        document.getElementById("totalTx").innerText = payLogs.length;
+        // Hiển thị lên UI - Đảm bảo ID đúng
+        const revenueEl = document.getElementById("totalRevenue");
+        const feesEl = document.getElementById("totalFees");
+        const withdrawnEl = document.getElementById("totalWithdrawn");
+        const txCountEl = document.getElementById("totalTx");
+
+        if (revenueEl) revenueEl.innerText = ethers.utils.formatEther(totalGross.sub(totalFees)) + " ETH";
+        if (feesEl) feesEl.innerText = ethers.utils.formatEther(totalFees) + " ETH";
+        if (withdrawnEl) withdrawnEl.innerText = ethers.utils.formatEther(totalWithdrawn) + " ETH";
+        if (txCountEl) txCountEl.innerText = payLogs.length;
 
     } catch (e) {
         console.error("Lỗi cập nhật tài chính:", e);
@@ -285,8 +296,11 @@ async function loadTransactions() {
     if (!table || !contract) return;
     
     try {
+        // Cập nhật stats trước
+        await updateFinancialStats();
+        
         const filter = contract.filters.PaymentProcessed(null, currentAccount);
-        const logs = await contract.queryFilter(filter, -10000);
+        const logs = await contract.queryFilter(filter, 0);
         
         table.innerHTML = "";
         
@@ -296,8 +310,6 @@ async function loadTransactions() {
         }
 
         const reversedLogs = logs.slice().reverse();
-        updateFinancialStats(); // Cập nhật luôn stats tổng quát
-
         for (const log of reversedLogs) {
             const { customer, amount, fee } = log.args;
             const block = await log.getBlock();
