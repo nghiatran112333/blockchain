@@ -7,12 +7,12 @@ async function initializeApp() {
 }
 
 async function checkMerchantStatus() {
+    const { contract, currentAccount } = window.cryptoPay;
     if (!contract || !currentAccount) return;
     try {
         const info = await contract.getMerchantInfo(currentAccount);
         const [name, balance, isActive] = info;
         
-        const statusDiv = document.getElementById("merchantStatus");
         if (isActive) {
             updateUIStat("shopName", name);
             updateUIStat("regStatus", "Online");
@@ -22,9 +22,9 @@ async function checkMerchantStatus() {
             const regForm = document.getElementById("registrationForm");
             if (regForm) regForm.style.display = "none";
             
-            // Cập nhật số dư trong Web
             updateUIStat("systemBalance", ethers.utils.formatEther(balance) + " ETH");
             
+            const statusDiv = document.getElementById("merchantStatus");
             if (statusDiv) {
                 statusDiv.innerHTML = `
                     <div style="margin-bottom: 1rem;">
@@ -35,7 +35,7 @@ async function checkMerchantStatus() {
                         <p style="color: var(--text-muted); font-size: 0.85rem;">Số dư khả dụng:</p>
                         <p style="font-size: 1.5rem; font-weight: 800; color: #10b981;">${ethers.utils.formatEther(balance)} ETH</p>
                     </div>
-                    <button class="btn btn-primary" onclick="withdrawFunds()" style="width: 100%; height: 50px;" ${balance.eq(0) ? 'disabled' : ''}>
+                    <button id="withdrawBtn" class="btn btn-primary" onclick="withdrawFunds()" style="width: 100%; height: 50px;" ${balance.eq(0) ? 'disabled' : ''}>
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
                         ${balance.eq(0) ? 'Không có tiền để rút' : 'Rút tiền ngay'}
                     </button>
@@ -50,6 +50,7 @@ async function checkMerchantStatus() {
 
 async function loadDataAndStats() {
     const table = document.getElementById("txTable");
+    const { contract, currentAccount } = window.cryptoPay;
     if (!table || !contract || !currentAccount || isFetchingData) return;
     
     try {
@@ -87,7 +88,6 @@ async function loadDataAndStats() {
             `;
         }));
 
-        // Tính nốt phần còn lại của stats
         if (payLogs.length > 20) {
             payLogs.slice(0, payLogs.length - 20).forEach(log => {
                 totalRevenueNet = totalRevenueNet.add(log.args.amount.sub(log.args.fee || 0));
@@ -107,6 +107,8 @@ async function loadDataAndStats() {
 }
 
 async function registerMerchant() {
+    const { contract } = window.cryptoPay;
+    if (!contract) return;
     const name = document.getElementById("merchantName").value;
     if (!name || name.length < 3) return showToast("Tên cửa hàng quá ngắn!", "error");
     
@@ -123,13 +125,13 @@ async function registerMerchant() {
 }
 
 function generateQR() {
+    const { currentAccount } = window.cryptoPay;
     const amount = document.getElementById("amountInput").value;
     if (!amount || amount <= 0) return showToast("Nhập số tiền hợp lệ!", "error");
     
     const qrDiv = document.getElementById("qrcode");
     qrDiv.innerHTML = "";
     
-    // MetaMask Deep Link for Desktop/Mobile
     const paymentUrl = `https://metamask.app.link/dapp/${window.location.host}/pay.html?merchant=${currentAccount}&amount=${amount}`;
     
     new QRCode(qrDiv, { text: paymentUrl, width: 220, height: 220 });
@@ -138,7 +140,9 @@ function generateQR() {
 }
 
 async function withdrawFunds() {
-    if (!contract) return;
+    const { contract } = window.cryptoPay;
+    if (!contract) return showToast("Vui lòng kết nối ví!", "error");
+    
     setBtnLoading("withdrawBtn", true);
     try {
         const tx = await contract.withdraw();
@@ -147,6 +151,7 @@ async function withdrawFunds() {
         showToast("Tiền đã được rút về ví của bạn!", "success");
         checkMerchantStatus();
     } catch (err) {
+        console.error(err);
         showToast("Lỗi rút tiền: " + (err.reason || err.message), "error");
     } finally { setBtnLoading("withdrawBtn", false); }
 }

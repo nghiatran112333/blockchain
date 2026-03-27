@@ -1,6 +1,4 @@
 // blockchain-service.js - Xử lý kết nối ví và sự kiện mạng
-let provider, signer, contract;
-let currentAccount;
 let isInitializing = false;
 
 async function connectWallet() {
@@ -10,23 +8,25 @@ async function connectWallet() {
     isInitializing = true;
     
     try {
-        provider = new ethers.providers.Web3Provider(window.ethereum);
-        await provider.send("eth_requestAccounts", []);
+        const { targetChainId, targetChainHex, contractAddress, abi } = window.cryptoPay;
         
-        const network = await provider.getNetwork();
+        window.cryptoPay.provider = new ethers.providers.Web3Provider(window.ethereum);
+        await window.cryptoPay.provider.send("eth_requestAccounts", []);
         
-        if (network.chainId !== TARGET_CHAIN_ID) {
+        const network = await window.cryptoPay.provider.getNetwork();
+        
+        if (network.chainId !== targetChainId) {
             try {
                 await window.ethereum.request({
                     method: 'wallet_switchEthereumChain',
-                    params: [{ chainId: TARGET_CHAIN_HEX }],
+                    params: [{ chainId: targetChainHex }],
                 });
             } catch (switchError) {
                 if (switchError.code === 4902) {
                     await window.ethereum.request({
                         method: 'wallet_addEthereumChain',
                         params: [{
-                            chainId: TARGET_CHAIN_HEX,
+                            chainId: targetChainHex,
                             chainName: 'Sepolia Test Network',
                             nativeCurrency: { name: 'Sepolia ETH', symbol: 'ETH', decimals: 18 },
                             rpcUrls: ['https://rpc.sepolia.org'],
@@ -35,15 +35,15 @@ async function connectWallet() {
                     });
                 }
             }
-            provider = new ethers.providers.Web3Provider(window.ethereum);
+            window.cryptoPay.provider = new ethers.providers.Web3Provider(window.ethereum);
         }
         
-        signer = provider.getSigner();
-        currentAccount = await signer.getAddress();
+        window.cryptoPay.signer = window.cryptoPay.provider.getSigner();
+        window.cryptoPay.currentAccount = await window.cryptoPay.signer.getAddress();
         
         // Update Bottom Bar UI
         const addrEl = document.getElementById("walletAddr");
-        if (addrEl) addrEl.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg> ${currentAccount.substring(0,6)}...${currentAccount.substring(38)}`;
+        if (addrEl) addrEl.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg> ${window.cryptoPay.currentAccount.substring(0,6)}...${window.cryptoPay.currentAccount.substring(38)}`;
         
         const btn = document.getElementById("connectBtn");
         if (btn) {
@@ -53,8 +53,8 @@ async function connectWallet() {
         
         showToast("Kết nối ví thành công!", "success");
 
-        if (contractAddress && !contract) {
-            contract = new ethers.Contract(contractAddress, abi, signer);
+        if (contractAddress && !window.cryptoPay.contract) {
+            window.cryptoPay.contract = new ethers.Contract(contractAddress, abi, window.cryptoPay.signer);
             setupEventListeners();
         }
         
@@ -71,7 +71,9 @@ async function connectWallet() {
 }
 
 function setupEventListeners() {
+    const { contract, currentAccount } = window.cryptoPay;
     if (!contract) return;
+    
     contract.removeAllListeners();
 
     contract.on("PaymentProcessed", (customer, merchant, amount, fee) => {
