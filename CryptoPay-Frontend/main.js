@@ -332,8 +332,23 @@ window.addEventListener('load', () => {
     if (contract) {
         contract.on("PaymentProcessed", (customer, merchant, amount, fee) => {
             if (merchant.toLowerCase() === currentAccount.toLowerCase()) {
-                showToast(`🔔 Vừa nhận ${ethers.utils.formatEther(amount)} ETH từ khách hàng!`, "success");
+                // 1. Thông báo cực mạnh
+                showToast(`🚀 NHẬN THÀNH CÔNG ${ethers.utils.formatEther(amount)} ETH!`, "success");
+                
+                // 2. Hủy mã QR ngay lập tức cho chuyên nghiệp
+                const qrDiv = document.getElementById("qrcode");
+                qrDiv.innerHTML = `
+                    <div style="text-align:center; padding: 2rem;">
+                        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" style="margin-bottom:1rem;"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        <p style="color:#10b981; font-weight:700;">GIAO DỊCH HOÀN TẤT</p>
+                    </div>
+                `;
+                document.getElementById("qrLabel").innerText = "Hóa đơn đã được thanh toán!";
+                document.getElementById("amountInput").value = "";
+
+                // 3. Cập nhật số liệu tức thì
                 loadTransactions();
+                updateFinancialStats();
                 checkMerchantStatus();
             }
         });
