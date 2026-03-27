@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CryptoPay - Hệ thống Thanh toán Blockchain chuyên nghiệp</title>
+  <meta name="description" content="Thanh toán tiền điện tử an toàn, nhanh chóng và hiện đại cho cửa hàng của bạn.">
+  <link rel="icon" href="https://cdn-icons-png.flaticon.com/512/6001/6001345.png">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js" type="application/javascript"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+  <div class="app-container">
+    <!-- Sidebar -->
+    <aside>
+      <div class="logo">CryptoPay <span>&bull;</span></div>
+      <nav>
+        <div class="nav-item active">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+          Dashboard
+        </div>
+        <div class="nav-item">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+          Lịch sử GD
+        </div>
+        <div class="nav-item">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line></svg>
+          Rút tiền
+        </div>
+        <div class="nav-item">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+          Cài đặt
+        </div>
+      </nav>
+      <div id="networkInfo" style="margin-top: 2rem; padding: 1.25rem; border-radius: 1.25rem; background: rgba(239, 68, 68, 0.05); border: 1px dashed rgba(239, 68, 68, 0.3);">
+        <div style="font-size: 0.75rem; color: #ef4444; font-weight: 800; margin-bottom: 0.75rem; letter-spacing: 0.05em;">CẤU HÌNH MOBILE (BẮT BUỘC):</div>
+        <!-- Injected by JS -->
+        <p style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.75rem; line-height: 1.4;">
+          ⚠️ Nếu điện thoại không load được, hãy <span style="color:white; font-weight:600;">Tắt Firewall Windows</span>.
+        </p>
+      </div>
+      <div style="margin-top: auto;">
+        <button id="connectBtn" class="btn btn-primary" onclick="connectWallet()" style="width: 100%;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+          Kết nối Ví
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main>
+      <header style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 3rem;">
+        <div>
+            <h1 style="font-size: 2.5rem; letter-spacing: -0.02em;">Chào mừng Merchant!</h1>
+            <p style="color: var(--text-muted); margin-top: 0.5rem;">Cửa hàng của bạn đang hoạt động trên Blockchain.</p>
+        </div>
+        <div id="walletAddr" class="status-badge" style="background: rgba(255,255,255,0.05); padding: 0.75rem 1.25rem; font-family: monospace;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+          Chưa kết nối
+        </div>
+      </header>
+
+      <!-- Stats Grid -->
+      <div class="grid">
+        <div class="card balance-card">
+          <p style="opacity: 0.9; font-weight: 500;">Số dư hệ thống</p>
+          <div class="stat-value" id="systemBalance">0.00 ETH</div>
+          <button class="btn" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white;" onclick="withdrawFunds()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+            Rút tiền
+          </button>
+        </div>
+        <div class="card">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+              <p style="color: var(--text-muted); font-weight: 500;">Thu nhập hôm nay</p>
+              <div class="status-badge status-success">+12%</div>
+          </div>
+          <div class="stat-value" style="color: var(--success); font-family: 'Outfit';">+0.52 ETH</div>
+          <p style="color: var(--text-muted); font-size: 0.85rem;">Cập nhật 5 phút trước</p>
+        </div>
+        <div class="card">
+          <p style="color: var(--text-muted); font-weight: 500;">Tổng giao dịch</p>
+          <div class="stat-value" id="totalTx">0</div>
+          <p style="color: var(--text-muted); font-size: 0.85rem;">Toàn thời gian</p>
+        </div>
+      </div>
+
+      <!-- Payment Section -->
+      <div class="grid" style="margin-top: 3rem;">
+        <div class="card" style="grid-column: span 2;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+              <div>
+                  <h3 style="font-size: 1.5rem;">Cổng thanh toán QR</h3>
+                  <p style="color: var(--text-muted); font-size: 0.9rem;">Khách hàng quét mã này để thanh toán bảo mật</p>
+              </div>
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity: 0.3;"><path d="M3 7V5c0-1.1.9-2 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"></path><rect x="7" y="7" width="10" height="10" rx="1"></rect></svg>
+          </div>
+          <div class="qr-container">
+            <div id="qrcode"></div>
+            <p id="qrLabel" style="font-weight: 600; color: var(--primary);">Nhập số tiền để tạo mã thanh toán</p>
+            <div style="display: flex; gap: 15px; width: 100%; max-width: 500px;">
+              <input type="number" id="amountInput" placeholder="VD: 0.05" style="flex: 1; padding: 1rem; border-radius: 1rem; border: 1px solid var(--border); background: rgba(0,0,0,0.3); color: white; font-size: 1rem;">
+              <button id="generateBtn" class="btn btn-primary" onclick="generateQR()" style="min-width: 140px;">Tạo QR</button>
+            </div>
+            <div id="copyContainer" style="display: none; margin-top: 1rem; flex-direction: column; align-items: center; gap: 0.5rem;">
+                <button class="btn" onclick="copyPaymentLink()" style="background: rgba(255,255,255,0.05); font-size: 0.85rem; border: 1px dashed var(--border);">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                    Copy link gán vào MetaMask
+                </button>
+                <button class="btn" onclick="openSimulation()" style="background: linear-gradient(90deg, var(--secondary), var(--primary)); font-size: 0.85rem; border: none; color: white;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                    Mở Giả lập Thanh toán (PC)
+                </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3 style="margin-bottom: 1.5rem;">Trạng thái Shop</h3>
+          <div id="merchantStatus">
+            <div style="background: rgba(255,255,255,0.03); padding: 1.25rem; border-radius: 1rem; margin-bottom: 1.5rem;">
+                <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.5rem;">Tên cửa hàng:</p>
+                <p id="shopName" style="font-size: 1.25rem; font-weight: 700; color: var(--primary);">Chưa đăng ký</p>
+                <div style="margin-top: 1rem;">
+                    <span class="status-badge" id="regStatus">Offline</span>
+                </div>
+            </div>
+            
+            <div id="registrationForm" style="display: none;">
+                <p style="margin-bottom: 1rem; font-size: 0.9rem; color: var(--text-muted);">Đăng ký ngay để nhận thanh toán bằng Crypto</p>
+                <input type="text" id="regName" placeholder="Tên shop của bạn" style="width: 100%; padding: 1rem; margin-bottom: 1rem; border-radius: 1rem; border: 1px solid var(--border); background: rgba(0,0,0,0.3); color: white;">
+                <button id="registerBtn" class="btn btn-primary" style="width: 100%;" onclick="registerMerchant()">Đăng ký Merchant</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Transactions -->
+      <div class="card" style="margin-top: 3rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+            <h3>Giao dịch gần đây</h3>
+            <button class="btn" style="background: transparent; color: var(--primary); font-size: 0.9rem;" onclick="loadTransactions()">Làm mới</button>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Khách hàng</th>
+              <th>Số tiền</th>
+              <th>Thời gian</th>
+              <th>Trạng thái</th>
+            </tr>
+          </thead>
+          <tbody id="txTable">
+            <!-- Data will be injected here -->
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+
+  <div id="toast-container"></div>
+
+  <script src="main.js"></script>
+</body>
+</html>
+

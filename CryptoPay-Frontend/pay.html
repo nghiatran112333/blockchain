@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CryptoPay - Thanh toán An toàn</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js" type="application/javascript"></script>
+</head>
+<body style="display: flex; align-items: center; justify-content: center; min-height: 100vh; background: #1e1b4b; background-image: radial-gradient(at 0% 100%, #4338ca 0, transparent 50%), radial-gradient(at 100% 0%, #7c3aed 0, transparent 50%);">
+  <div class="card" style="width: 100%; max-width: 450px; padding: 2.5rem; text-align: center; border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);">
+    <div class="logo" style="margin-bottom: 2rem; font-size: 2rem; background: #fff; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(0 0 10px rgba(255,255,255,0.3));">CryptoPay <span>&bull;</span></div>
+    
+    <div id="paymentDetails" style="display: none;">
+      <div style="display: inline-flex; align-items: center; gap: 0.5rem; background: #7c3aed; color: white; padding: 0.5rem 1.25rem; border-radius: 2rem; font-size: 0.8rem; font-weight: 800; margin-bottom: 2rem; box-shadow: 0 0 20px rgba(124, 58, 237, 0.4);">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+        CHẾ ĐỘ KHÁCH HÀNG
+      </div>
+      <h2 style="margin-bottom: 1rem; font-size: 1.75rem; letter-spacing: -0.02em;">Thanh toán hóa đơn</h2>
+      <p style="color: var(--text-muted); margin-bottom: 2rem;">Vui lòng xác nhận chi tiết giao dịch bên dưới</p>
+
+      <div style="background: rgba(255,255,255,0.03); padding: 1.5rem; border-radius: 1.5rem; border: 1px solid var(--border); margin-bottom: 2rem; position: relative; overflow: hidden;">
+        <div style="position: absolute; top:0; right:0; padding: 0.5rem 1rem; background: var(--primary); font-size: 0.65rem; font-weight: 800; border-bottom-left-radius: 1rem; letter-spacing: 0.05em;">SECURE</div>
+        
+        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.5rem;">Người nhận:</p>
+        <p id="merchantName" style="font-size: 1.1rem; font-weight: 700; color: var(--primary); margin-bottom: 0.25rem;">Đang tải...</p>
+        <p id="merchantAddr" style="font-family: monospace; font-size: 0.75rem; color: var(--text-muted); opacity: 0.7;"></p>
+        
+        <div style="margin: 1.5rem 0; height: 1px; background: var(--border);"></div>
+        
+        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.5rem;">Số tiền:</p>
+        <div style="display: flex; align-items: baseline; justify-content: center; gap: 0.5rem;">
+          <span id="payAmount" style="font-size: 2.5rem; font-weight: 800; letter-spacing: -0.05em;">0.00</span>
+          <span style="font-size: 1.25rem; font-weight: 600; color: var(--secondary);">ETH</span>
+        </div>
+      </div>
+
+      <button id="payBtn" class="btn btn-primary" style="width: 100%; padding: 1.25rem; font-size: 1.1rem;" onclick="processPayment()">
+        Xác nhận Thanh toán
+      </button>
+      
+      <p style="margin-top: 1.5rem; color: var(--text-muted); font-size: 0.8rem; line-height: 1.5;">
+        Khởi chạy trình duyệt MetaMask để hoàn tất giao dịch.<br>
+        Phí nền tảng (1%) đã được bao gồm.
+      </p>
+    </div>
+
+    <!-- Loading / Info State -->
+    <div id="loader" style="padding: 2rem 0;">
+      <div class="loading-spinner" style="width: 3rem; height: 3rem; margin: 0 auto 1.5rem; border-width: 4px;"></div>
+      <p id="loaderText" style="color: var(--text-muted);">Đang kiểm tra kết nối ví...</p>
+      <button id="connectBtn" class="btn btn-primary" style="display: none; width: 100%; margin-top: 2rem;" onclick="connectWallet()">Kết nối MetaMask</button>
+    </div>
+  </div>
+
+  <div id="toast-container"></div>
+
+  <script>
+    // Cấu hình Smart Contract (Sẽ được tự động cập nhật)
+    const contractAddress = "0x3397152282E048404775bbD42a28D21D62c741F0"; 
+    const abi = [
+        "function payMerchant(address _merchantAddr) public payable",
+        "function getMerchantInfo(address _addr) public view returns (string memory name, uint256 balance, bool isActive)"
+    ];
+
+    let provider, signer, contract, currentAccount;
+    const params = new URLSearchParams(window.location.search);
+    const merchant = params.get("merchant");
+    const amount = params.get("amount");
+
+    // Toast System (Reuse from main.js)
+    function showToast(message, type = 'info') {
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        
+        let icon = '';
+        if (type === 'success') icon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>';
+        if (type === 'error') icon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>';
+        if (type === 'warning') icon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>';
+        
+        toast.innerHTML = `${icon} <span>${message}</span>`;
+        container.appendChild(toast);
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            setTimeout(() => toast.remove(), 300);
+        }, 5000);
+    }
+
+    async function init() {
+        if (!merchant || !amount) {
+            document.getElementById("loaderText").innerText = "Lỗi: Link thanh toán không hợp lệ!";
+            document.querySelector(".loading-spinner").style.display = "none";
+            return;
+        }
+
+        if (!window.ethereum) {
+            document.getElementById("loaderText").innerHTML = "Vui lòng cài đặt <span style='color:var(--primary)'>MetaMask Browser</span> để thanh toán!";
+            document.querySelector(".loading-spinner").style.display = "none";
+            return;
+        }
+
+        // Tự động yêu cầu kết nối ví ngay khi vào trang
+        try {
+            provider = new ethers.providers.Web3Provider(window.ethereum);
+            const accounts = await provider.send("eth_requestAccounts", []);
+            if (accounts.length > 0) {
+                await setupAccount(accounts[0]);
+                showToast("Đã kết nối ví khách hàng!", "success");
+            }
+        } catch (e) {
+            console.error(e);
+            document.getElementById("loaderText").innerHTML = `
+                <div style="background: rgba(255,255,255,0.05); padding: 1.5rem; border-radius: 1rem; border: 1px dashed var(--border);">
+                    <p style="margin-bottom: 1rem;">Vui lòng kết nối **Ví Khách hàng (Account 2)** để thực hiện giao dịch.</p>
+                    <p style="font-size: 0.75rem; opacity: 0.7;">(Nếu MetaMask hiện ví Merchant, hãy bấm 'Chuyển tài khoản' trong MetaMask)</p>
+                </div>
+            `;
+            document.getElementById("connectBtn").style.display = "flex";
+            document.getElementById("connectBtn").innerText = "Kết nối Ví Khách hàng";
+            document.querySelector(".loading-spinner").style.display = "none";
+        }
+    }
+
+    async function connectWallet() {
+        try {
+            const accounts = await provider.send("eth_requestAccounts", []);
+            await setupAccount(accounts[0]);
+        } catch (e) {
+            showToast("Từ chối kết nối ví", "error");
+        }
+    }
+
+    async function setupAccount(account) {
+        currentAccount = account;
+        signer = provider.getSigner();
+        contract = new ethers.Contract(contractAddress, abi, signer);
+        
+        // Cập nhật giao diện
+        document.getElementById("loader").style.display = "none";
+        document.getElementById("paymentDetails").style.display = "block";
+        document.getElementById("payAmount").innerText = amount;
+        document.getElementById("merchantAddr").innerText = merchant.substring(0,6) + "..." + merchant.substring(38);
+
+        // Kiểm tra xem có đang dùng trùng ví không (Dành cho Demo)
+        if (currentAccount.toLowerCase() === merchant.toLowerCase()) {
+            showToast("⚠️ Lưu ý: Bạn đang dùng ví Merchant. Hãy chuyển sang Account khác để demo chuẩn!", "warning");
+            return; // Đừng tự động thanh toán nếu là ví Merchant
+        }
+
+        // TỰ ĐỘNG GỌI THANH TOÁN SAU 1 GIÂY (Cho demo nhanh nhất)
+        setTimeout(() => {
+            showToast("Đang tự động khởi tạo thanh toán...", "info");
+            processPayment();
+        }, 1200);
+
+        // Lấy tên Merchant
+        try {
+            const info = await contract.getMerchantInfo(merchant);
+            document.getElementById("merchantName").innerText = info[2] ? info[0] : "Địa chỉ chưa đăng ký";
+        } catch (e) {
+            document.getElementById("merchantName").innerText = "Cửa hàng #" + merchant.substring(2,6);
+        }
+    }
+
+    async function processPayment() {
+        const btn = document.getElementById("payBtn");
+        btn.disabled = true;
+        btn.innerText = "Đang xác nhận...";
+
+        try {
+            // Check Network (11155111 - Sepolia)
+            const network = await provider.getNetwork();
+            if (network.chainId !== 11155111) {
+                try {
+                    await window.ethereum.request({
+                        method: 'wallet_switchEthereumChain',
+                        params: [{ chainId: '0xaa36a7' }],
+                    });
+                } catch (switchError) {
+                    if (switchError.code === 4902) {
+                        await window.ethereum.request({
+                            method: 'wallet_addEthereumChain',
+                            params: [{
+                                chainId: '0xaa36a7',
+                                chainName: 'Sepolia Test Network',
+                                nativeCurrency: { name: 'Sepolia ETH', symbol: 'ETH', decimals: 18 },
+                                rpcUrls: ['https://rpc.sepolia.org'],
+                                blockExplorerUrls: ['https://sepolia.etherscan.io']
+                            }],
+                        });
+                    }
+                }
+            }
+
+            const tx = await contract.payMerchant(merchant, {
+                value: ethers.utils.parseEther(amount)
+            });
+            
+            showToast("Đang gửi giao dịch lên Blockchain...", "info");
+            await tx.wait();
+            
+            showToast("Thanh toán THÀNH CÔNG!", "success");
+            btn.innerText = "ĐÃ THANH TOÁN";
+            btn.style.background = "var(--success)";
+            
+            setTimeout(() => {
+                alert("Cảm ơn bạn đã thanh toán thành công qua CryptoPay!");
+            }, 500);
+        } catch (e) {
+            showToast("Lỗi: " + (e.reason || e.message), "error");
+            btn.disabled = false;
+            btn.innerText = "Xác nhận Thanh toán";
+        }
+    }
+
+    window.onload = init;
+  </script>
+</body>
+</html>
