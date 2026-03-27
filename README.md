@@ -1,32 +1,21 @@
-# 🚀 CryptoPay: Cổng Thanh toán Blockchain Chuyên nghiệp (Sepolia)
+# 🚀 CryptoPay: Hệ thống Thanh toán Blockchain - [Trần Gia Nghĩa]
 
-Chào mừng bạn đến với **CryptoPay** - Giải pháp thanh toán Smart Contract thương mại thực tế. Hệ thống đã được triển khai thành công trên **Sepolia Testnet** và tối ưu hóa cho trải nghiệm "Quét để trả" 1-chạm trên di động.
+Chào mừng bạn đến với **CryptoPay** - Dự án nghiên cứu và phát triển cổng thanh toán Smart Contract thực tế của **Trần Gia Nghĩa**. Hệ thống đã được triển khai thành công trên môi trường **Sepolia Testnet**, hỗ trợ trải nghiệm thanh toán "Một chạm" hiện đại.
 
-## 🌐 Demo Trực tiếp
-👉 **[Truy cập Dashboard Merchant](https://blockchain-nghiatran112333.vercel.app/)**
+## 🌟 Thành tựu của dự án
+- **Triển khai Production**: Hệ thống không còn chạy local mà đã được đưa lên mạng lưới Blockchain công khai (Sepolia).
+- **Kiến trúc Modular**: Toàn bộ mã nguồn đã được tối ưu hóa thành 5 mô-đun chuyên nghiệp, dễ dàng bảo trì và mở rộng.
+- **Trải nghiệm di động tối ưu**: Tích hợp MetaMask Deep Link giúp khách hàng thanh toán ngay lập tức chỉ bằng cách quét mã QR từ camera điện thoại.
+- **Bảng điều khiển Real-time**: Dashboard dành cho người bán tự động cập nhật doanh thu và lịch sử giao dịch ngay khi có sự kiện trên Blockchain mà không cần tải lại trang.
 
-## 🌟 Tính năng Đắt giá
-- **Modular Architecture**: Code được chia nhỏ thành 5 mô-đun (`config`, `ui-utils`, `blockchain`, `app-logic`, `main`) cực kỳ dễ quản lý.
-- **MetaMask Deep Linking**: Tự động mở App MetaMask trên điện thoại để thanh toán ngay khi quét QR.
-- **Real-time Dashboard**: Thống kê doanh thu, phí và lịch sử giao dịch cập nhật tức thì (không cần load lại trang).
-- **Rút tiền trực tiếp**: Merchant có thể rút doanh thu từ Smart Contract về ví cá nhân chỉ với 1 click.
-- **Tương thích Sepolia**: Hoạt động trên mạng lưới Blockchain công khai, không cần chạy Localhost.
+## 🔗 Demo Trực tiếp
+👉 **[Xem Dashboard tại đây](https://blockchain-nghiatran112333.vercel.app/)**
 
-## 🛠️ Cấu trúc dự án (Modular)
-- `config.js`: Chứa địa chỉ Contract (`0x339...`) và ABI.
-- `ui-utils.js`: Quản lý thông báo (Toast) và trạng thái Loading.
-- `blockchain-service.js`: Xử lý kết nối ví và lắng nghe sự kiện từ chuỗi.
-- `app-logic.js`: Xử lý logic nghiệp vụ (QR Code, Rút tiền, Tính toán Stats).
-- `main.js`: Điểm khởi chạy của toàn bộ ứng dụng.
-
-## 📱 Hướng dẫn Demo (1-chạm)
-1. **Dành cho Merchant**:
-   - Truy cập Dashboard, kết nối Ví Merchant (Sepolia).
-   - Nhập giá tiền và nhấn **Tạo QR**.
-2. **Dành cho Khách hàng**:
-   - Dùng camera điện thoại quét mã QR.
-   - Nhấn vào link hiện ra để mở **MetaMask Mobile**.
-   - Xác nhận thanh toán và xem Dashboard của Merchant tự động cập nhật!
+## 🛠️ Công nghệ sử dụng
+- **Smart Contract**: Solidity (Deployed on Sepolia).
+- **Frontend**: Vanilla HTML/JS, Ethers.js v5.
+- **Hosting**: Vercel.
+- **Tools**: MetaMask, Remix, JavaScript QR Engine.
 
 ---
-**Dự án đã hoàn thiện 100% cho buổi thuyết trình và sử dụng thực tế.** 🎯🏆🚀
+**Dự án được thực hiện bởi Trần Gia Nghĩa.**🎯🏆🚀
