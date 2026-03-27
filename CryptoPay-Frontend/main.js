@@ -102,10 +102,10 @@ async function connectWallet() {
 
         if (contractAddress !== "0x") {
             contract = new ethers.Contract(contractAddress, abi, signer);
-            checkMerchantStatus();
-            loadTransactions();
+            // Kích hoạt load dữ liệu
+            initializeApp();
         } else {
-            showToast("Vui lòng điền địa chỉ Smart Contract vào file main.js!", "info");
+            showToast("Vui lòng điền địa chỉ Smart Contract!", "info");
         }
     } catch (err) {
         console.error("Lỗi kết nối ví:", err);
@@ -114,19 +114,41 @@ async function connectWallet() {
     }
 }
 
+async function initializeApp() {
+    await checkMerchantStatus();
+    await loadDataAndStats();
+}
 
 async function checkMerchantStatus() {
-    if (!contract) return;
+    if (!contract || !currentAccount) return;
     try {
         const info = await contract.getMerchantInfo(currentAccount);
         const [name, balance, isActive] = info;
         
+        const statusDiv = document.getElementById("merchantStatus");
         if (isActive) {
             document.getElementById("shopName").innerText = name;
             document.getElementById("regStatus").innerText = "Online";
             document.getElementById("regStatus").className = "status-badge status-success";
             document.getElementById("registrationForm").style.display = "none";
+            // Đây là số dư CÒN LẠI trong hợp đồng
             document.getElementById("systemBalance").innerText = ethers.utils.formatEther(balance) + " ETH";
+            
+            // Cập nhật nút rút tiền dựa trên số dư
+            statusDiv.innerHTML = `
+                <div style="margin-bottom: 1rem;">
+                    <p style="color: var(--text-muted); font-size: 0.85rem;">Tên cửa hàng:</p>
+                    <p style="font-size: 1.1rem; font-weight: 700; color: var(--secondary);">${name}</p>
+                </div>
+                <div style="margin-bottom: 1.5rem;">
+                    <p style="color: var(--text-muted); font-size: 0.85rem;">Số dư khả dụng (Tiền trong hợp đồng):</p>
+                    <p style="font-size: 1.5rem; font-weight: 800; color: #10b981;">${ethers.utils.formatEther(balance)} ETH</p>
+                </div>
+                <button id="withdrawBtn" class="btn btn-primary" onclick="withdrawFunds()" style="width: 100%; height: 50px;" ${balance.eq(0) ? 'disabled' : ''}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+                    ${balance.eq(0) ? 'Không có tiền để rút' : 'Rút tiền về ví'}
+                </button>
+            `;
         } else {
             document.getElementById("registrationForm").style.display = "block";
         }
@@ -242,97 +264,84 @@ async function withdrawFunds() {
 }
 
 
-async function updateFinancialStats() {
-    if (!contract || !currentAccount) return;
+// HÀM QUAN TRỌNG: Load dữ liệu và tính toán thống kê cùng lúc
+async function loadDataAndStats() {
+    const table = document.getElementById("txTable");
+    if (!table || !contract || !currentAccount) return;
     
     try {
-        console.log("Cập nhật số liệu tài chính cho:", currentAccount);
-        // Dùng 0 để lấy từ block đầu tiên của contract (Sepolia hỗ trợ tốt)
-        const startBlock = 0; 
+        console.log("Đang đồng bộ dữ liệu Blockchain cho:", currentAccount);
         
-        // 1. Lấy tất cả các giao dịch thanh toán
+        // 1. Lấy tất cả các sự kiện PaymentProcessed
         const payFilter = contract.filters.PaymentProcessed(null, currentAccount);
-        const payLogs = await contract.queryFilter(payFilter, startBlock); 
+        const payLogs = await contract.queryFilter(payFilter, 0);
         
-        let totalGross = ethers.BigNumber.from(0);
-        let totalFees = ethers.BigNumber.from(0);
-        
-        payLogs.forEach(log => {
-            if (log.args && log.args.amount) {
-                totalGross = totalGross.add(log.args.amount);
-                totalFees = totalFees.add(log.args.fee || 0);
-            }
-        });
-
-        // 2. Lấy tất cả các lệnh rút tiền
+        // 2. Lấy tất cả các sự kiện Withdrawal
         const withdrawFilter = contract.filters.Withdrawal(currentAccount);
-        const withdrawLogs = await contract.queryFilter(withdrawFilter, startBlock);
-        
+        const withdrawLogs = await contract.queryFilter(withdrawFilter, 0);
+
+        // Biến tính toán
+        let totalRevenueNet = ethers.BigNumber.from(0);
+        let totalFeesPaid = ethers.BigNumber.from(0);
         let totalWithdrawn = ethers.BigNumber.from(0);
-        withdrawLogs.forEach(log => {
-            if (log.args && log.args.amount) {
-                totalWithdrawn = totalWithdrawn.add(log.args.amount);
+        
+        // Xử lý thống kê thanh toán
+        table.innerHTML = "";
+        if (payLogs.length === 0) {
+            table.innerHTML = `<tr><td colspan="6" style="text-align:center; opacity:0.5; padding: 2rem;">Chưa có giao dịch minh bạch nào</td></tr>`;
+        } else {
+            const reversedLogs = payLogs.slice().reverse();
+            for (const log of reversedLogs) {
+                // Ethers v5 args parsing
+                const customer = log.args.customer;
+                const amount = log.args.amount;
+                const fee = log.args.fee || ethers.BigNumber.from(0);
+                const net = amount.sub(fee);
+
+                // Cộng dồn thống kê
+                totalRevenueNet = totalRevenueNet.add(net);
+                totalFeesPaid = totalFeesPaid.add(fee);
+
+                // Render row (chỉ render 20 cái gần nhất cho nhanh)
+                if (table.children.length < 20) {
+                    const block = await log.getBlock();
+                    const date = new Date(block.timestamp * 1000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                    const etherscanUrl = `https://sepolia.etherscan.io/tx/${log.transactionHash}`;
+
+                    table.innerHTML += `
+                        <tr>
+                            <td><a href="${etherscanUrl}" target="_blank" style="color:var(--text-muted); text-decoration:none;">#${log.blockNumber} ↗</a></td>
+                            <td>${customer.substring(0,6)}...${customer.substring(38)}</td>
+                            <td style="color:var(--text-muted); font-size:0.8rem; text-decoration:line-through;">${ethers.utils.formatEther(amount)}</td>
+                            <td><span style="color:#ef4444; font-size:0.8rem;">-${ethers.utils.formatEther(fee)}</span></td>
+                            <td><span style="color:#10b981; font-weight:700;">+${ethers.utils.formatEther(net)} ETH</span></td>
+                            <td style="font-size:0.8rem; opacity:0.7;">${date}</td>
+                        </tr>
+                    `;
+                }
             }
+        }
+
+        // Xử lý thống kê rút tiền
+        withdrawLogs.forEach(log => {
+            totalWithdrawn = totalWithdrawn.add(log.args.amount);
         });
 
-        // Hiển thị lên UI - Đảm bảo ID đúng
-        const revenueEl = document.getElementById("totalRevenue");
-        const feesEl = document.getElementById("totalFees");
-        const withdrawnEl = document.getElementById("totalWithdrawn");
-        const txCountEl = document.getElementById("totalTx");
+        // Cập nhật UI Stats
+        updateUIStat("totalRevenue", ethers.utils.formatEther(totalRevenueNet) + " ETH");
+        updateUIStat("totalFees", ethers.utils.formatEther(totalFeesPaid) + " ETH");
+        updateUIStat("totalWithdrawn", ethers.utils.formatEther(totalWithdrawn) + " ETH");
+        updateUIStat("totalTx", payLogs.length);
 
-        if (revenueEl) revenueEl.innerText = ethers.utils.formatEther(totalGross.sub(totalFees)) + " ETH";
-        if (feesEl) feesEl.innerText = ethers.utils.formatEther(totalFees) + " ETH";
-        if (withdrawnEl) withdrawnEl.innerText = ethers.utils.formatEther(totalWithdrawn) + " ETH";
-        if (txCountEl) txCountEl.innerText = payLogs.length;
-
-    } catch (e) {
-        console.error("Lỗi cập nhật tài chính:", e);
+    } catch (e) { 
+        console.error("Lỗi đồng bộ dữ liệu:", e); 
+        showToast("Lỗi đồng bộ dữ liệu từ Blockchain", "error");
     }
 }
 
-async function loadTransactions() {
-    const table = document.getElementById("txTable");
-    if (!table || !contract) return;
-    
-    try {
-        // Cập nhật stats trước
-        await updateFinancialStats();
-        
-        const filter = contract.filters.PaymentProcessed(null, currentAccount);
-        const logs = await contract.queryFilter(filter, 0);
-        
-        table.innerHTML = "";
-        
-        if (logs.length === 0) {
-            table.innerHTML = `<tr><td colspan="6" style="text-align:center; opacity:0.5; padding: 2rem;">Chưa có giao dịch minh bạch nào</td></tr>`;
-            return;
-        }
-
-        const reversedLogs = logs.slice().reverse();
-        for (const log of reversedLogs) {
-            const { customer, amount, fee } = log.args;
-            const block = await log.getBlock();
-            const date = new Date(block.timestamp * 1000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-            
-            const netAmount = amount.sub(fee);
-            const etherscanUrl = `https://sepolia.etherscan.io/tx/${log.transactionHash}`;
-
-            const row = `
-                <tr>
-                    <td><a href="${etherscanUrl}" target="_blank" style="color:var(--text-muted); text-decoration:none;">#${log.blockNumber} ↗</a></td>
-                    <td>${customer.substring(0,6)}...${customer.substring(38)}</td>
-                    <td style="color:var(--text-muted); font-size:0.8rem; text-decoration:line-through;">${ethers.utils.formatEther(amount)}</td>
-                    <td><span style="color:#ef4444; font-size:0.8rem;">-${ethers.utils.formatEther(fee)} (1%)</span></td>
-                    <td><span style="color:#10b981; font-weight:700;">+${ethers.utils.formatEther(netAmount)} ETH</span></td>
-                    <td style="font-size:0.8rem; opacity:0.7;">${date}</td>
-                </tr>
-            `;
-            table.innerHTML += row;
-        }
-    } catch (e) { 
-        console.error("Lỗi load lịch sử:", e); 
-    }
+function updateUIStat(id, value) {
+    const el = document.getElementById(id);
+    if (el) el.innerText = value;
 }
 
 // Chạy kiểm tra URL khi vừa load trang
@@ -340,42 +349,28 @@ window.addEventListener('load', () => {
     // Hiển thị thông tin Network cho Merchant biết
     displayNetworkInfo();
 
-    // Lắng nghe sự kiện thanh toán THỰC TẾ từ Blockchain
-    if (contract) {
-        contract.on("PaymentProcessed", (customer, merchant, amount, fee) => {
-            if (merchant.toLowerCase() === currentAccount.toLowerCase()) {
-                // 1. Thông báo cực mạnh
-                showToast(`🚀 NHẬN THÀNH CÔNG ${ethers.utils.formatEther(amount)} ETH!`, "success");
-                
-                // 2. Hủy mã QR ngay lập tức cho chuyên nghiệp
-                const qrDiv = document.getElementById("qrcode");
-                qrDiv.innerHTML = `
-                    <div style="text-align:center; padding: 2rem;">
-                        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" style="margin-bottom:1rem;"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                        <p style="color:#10b981; font-weight:700;">GIAO DỊCH HOÀN TẤT</p>
-                    </div>
-                `;
-                document.getElementById("qrLabel").innerText = "Hóa đơn đã được thanh toán!";
-                document.getElementById("amountInput").value = "";
-
                 // 3. Cập nhật số liệu tức thì
-                loadTransactions();
-                updateFinancialStats();
+                loadDataAndStats();
                 checkMerchantStatus();
             }
         });
+        
         // Lắng nghe sự kiện Rút tiền để cập nhật stats
         contract.on("Withdrawal", (merchant, amount) => {
             if (merchant.toLowerCase() === currentAccount.toLowerCase()) {
                 showToast(`💸 Bạn vừa rút thành công ${ethers.utils.formatEther(amount)} ETH!`, "success");
-                updateFinancialStats();
+                loadDataAndStats();
                 checkMerchantStatus();
             }
         });
     }
 
-    // Lắng nghe sự kiện đổi mạng/tài khoản (Fix lỗi đồng bộ)
+    // Tự động kết nối nếu đã từng kết nối (Auto-connect)
     if (window.ethereum) {
+        window.ethereum.request({ method: 'eth_accounts' }).then(accounts => {
+            if (accounts.length > 0) connectWallet();
+        });
+        
         window.ethereum.on('chainChanged', (_chainId) => window.location.reload());
         window.ethereum.on('accountsChanged', (_accounts) => window.location.reload());
     }
