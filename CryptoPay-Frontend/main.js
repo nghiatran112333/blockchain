@@ -48,19 +48,18 @@ function setBtnLoading(btnId, isLoading, text) {
     }
 }
 
+let isInitializing = false;
+
 async function connectWallet() {
-    if (!window.ethereum) {
-        showToast("Vui lòng cài đặt MetaMask!", "error");
-        return;
-    }
+    if (!window.ethereum || isInitializing) return;
+    
     setBtnLoading("connectBtn", true);
+    isInitializing = true;
+    
     try {
         provider = new ethers.providers.Web3Provider(window.ethereum);
-        
         await provider.send("eth_requestAccounts", []);
         
-        // Check Network (Sử dụng 1337 đồng bộ với Ganache hiện tại)
-        // Check Network (11155111 - Sepolia)
         const network = await provider.getNetwork();
         const targetChainId = 11155111; 
         const targetChainIdHex = '0xaa36a7'; 
@@ -90,29 +89,33 @@ async function connectWallet() {
         signer = provider.getSigner();
         currentAccount = await signer.getAddress();
         
-        document.getElementById("walletAddr").innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg> ${currentAccount.substring(0,6)}...${currentAccount.substring(38)}`;
+        // Update UI
+        const addrEl = document.getElementById("walletAddr");
+        if (addrEl) addrEl.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg> ${currentAccount.substring(0,6)}...${currentAccount.substring(38)}`;
         
-        // Remove loading state and set to Connected
         const btn = document.getElementById("connectBtn");
-        btn.disabled = false;
-        btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg> ${currentAccount.substring(0,6)}...`;
-        btn.classList.add("btn-success"); // Optional: add a success class if you want
-        btn.style.backgroundColor = "#10b981"; // Đổi sang màu xanh lá cho đẹp
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg> ${currentAccount.substring(0,6)}...`;
+            btn.style.backgroundColor = "#10b981";
+        }
         
         showToast("Kết nối ví thành công!", "success");
 
         if (contractAddress !== "0x") {
-            contract = new ethers.Contract(contractAddress, abi, signer);
-            // Kích hoạt load dữ liệu
+            // CHỈ KHỞI TẠO NẾU CHƯA CÓ
+            if (!contract) {
+                contract = new ethers.Contract(contractAddress, abi, signer);
+                setupEventListeners();
+            }
             initializeApp();
-            setupEventListeners();
-        } else {
-            showToast("Vui lòng điền địa chỉ Smart Contract!", "info");
         }
     } catch (err) {
         console.error("Lỗi kết nối ví:", err);
         showToast("Lỗi kết nối ví: " + err.message, "error");
+    } finally {
         setBtnLoading("connectBtn", false);
+        isInitializing = false;
     }
 }
 
