@@ -27,9 +27,16 @@ async function checkMerchantStatus() {
             const statusDiv = document.getElementById("merchantStatus");
             if (statusDiv) {
                 statusDiv.innerHTML = `
-                    <div style="margin-bottom: 1rem;">
+                    <div style="margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 1rem;">
                         <p style="color: var(--text-muted); font-size: 0.85rem;">Tên cửa hàng:</p>
-                        <p style="font-size: 1.1rem; font-weight: 700; color: var(--secondary);">${name}</p>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <p id="currentShopName" style="font-size: 1.25rem; font-weight: 700; color: var(--secondary);">${name}</p>
+                            <button onclick="toggleEditName()" class="btn" style="background: rgba(255,255,255,0.05); padding: 0.4rem 0.8rem; font-size: 0.75rem;">Đổi tên</button>
+                        </div>
+                        <div id="editNameForm" style="display: none; margin-top: 1rem;">
+                            <input type="text" id="newNameInput" value="${name}" style="width: 100%; padding: 0.8rem; margin-bottom: 0.5rem; border-radius: 0.75rem; border: 1px solid var(--border); background: rgba(0,0,0,0.3); color: white;">
+                            <button id="updateNameBtn" class="btn btn-primary" onclick="updateName()" style="width: 100%; font-size: 0.85rem;">Lưu tên mới</button>
+                        </div>
                     </div>
                     <div style="margin-bottom: 1.5rem;">
                         <p style="color: var(--text-muted); font-size: 0.85rem;">Số dư khả dụng:</p>
@@ -56,8 +63,8 @@ async function loadDataAndStats() {
     try {
         isFetchingData = true;
         const [payLogs, withdrawLogs] = await Promise.all([
-            contract.queryFilter(contract.filters.PaymentProcessed(null, currentAccount), 0),
-            contract.queryFilter(contract.filters.Withdrawal(currentAccount), 0)
+            contract.queryFilter(contract.filters.PaymentProcessed(null, currentAccount), -10000),
+            contract.queryFilter(contract.filters.Withdrawal(currentAccount), -10000)
         ]);
         
         let totalRevenueNet = ethers.BigNumber.from(0);
@@ -108,11 +115,11 @@ async function loadDataAndStats() {
 
 async function registerMerchant() {
     const { contract } = window.cryptoPay;
-    if (!contract) return;
-    const name = document.getElementById("merchantName").value;
+    if (!contract) return showToast("Vui lòng kết nối ví MetaMask trước!", "error");
+    const name = document.getElementById("regName").value;
     if (!name || name.length < 3) return showToast("Tên cửa hàng quá ngắn!", "error");
     
-    setBtnLoading("regBtn", true);
+    setBtnLoading("registerBtn", true);
     try {
         const tx = await contract.registerMerchant(name);
         showToast("Đang gửi yêu cầu đăng ký lên Blockchain...", "info");
@@ -121,7 +128,7 @@ async function registerMerchant() {
         checkMerchantStatus();
     } catch (err) {
         showToast("Lỗi đăng ký: " + (err.reason || err.message), "error");
-    } finally { setBtnLoading("regBtn", false); }
+    } finally { setBtnLoading("registerBtn", false); }
 }
 
 function generateQR() {
@@ -137,6 +144,42 @@ function generateQR() {
     new QRCode(qrDiv, { text: paymentUrl, width: 220, height: 220 });
     document.getElementById("qrLabel").innerHTML = `Quét để trả <span style="color:var(--secondary)">${amount} ETH</span>`;
     showToast("Đã tạo mã QR thanh toán!", "success");
+}
+
+function toggleEditName() {
+    const form = document.getElementById("editNameForm");
+    const nameDisplay = document.getElementById("currentShopName");
+    if (form.style.display === "none") {
+        form.style.display = "block";
+        if (nameDisplay) nameDisplay.style.display = "none";
+    } else {
+        form.style.display = "none";
+        if (nameDisplay) nameDisplay.style.display = "block";
+    }
+}
+
+async function updateName() {
+    const { contract } = window.cryptoPay;
+    if (!contract) return;
+    const newName = document.getElementById("newNameInput").value;
+    if (!newName || newName.length < 3) return showToast("Tên mới quá ngắn!", "error");
+    
+    const btn = document.getElementById("updateNameBtn");
+    btn.disabled = true;
+    btn.innerText = "Đang lưu...";
+    
+    try {
+        const tx = await contract.updateMerchantName(newName);
+        showToast("Đang cập nhật tên lên Blockchain...", "info");
+        await tx.wait();
+        showToast("Cập nhật tên thành công!", "success");
+        checkMerchantStatus();
+    } catch (err) {
+        showToast("Lỗi cập nhật: " + (err.reason || err.message), "error");
+    } finally {
+        btn.disabled = false;
+        btn.innerText = "Lưu tên mới";
+    }
 }
 
 async function withdrawFunds() {

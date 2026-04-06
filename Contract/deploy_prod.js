@@ -63,10 +63,10 @@ async function main() {
 }
 
 function updateFrontend(address) {
-    const mainJsPath = path.join(__dirname, "../CryptoPay-Frontend/main.js");
+    const configPath = path.join(__dirname, "../CryptoPay-Frontend/config.js");
     const payHtmlPath = path.join(__dirname, "../CryptoPay-Frontend/pay.html");
 
-    [mainJsPath, payHtmlPath].forEach(filePath => {
+    [configPath, payHtmlPath].forEach(filePath => {
         if (fs.existsSync(filePath)) {
             let content = fs.readFileSync(filePath, "utf8");
             content = content.replace(/const contractAddress = "0x[a-fA-F0-9]{40}";/, `const contractAddress = "${address}";`);

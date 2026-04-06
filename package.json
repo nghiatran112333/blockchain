@@ -1,0 +1,24 @@
+{
+  "name": "cryptopay-project",
+  "version": "1.0.0",
+  "description": "Hệ thống thanh toán Blockchain CryptoPay chuyên nghiệp",
+  "main": "index.html",
+  "scripts": {
+    "dev": "npx serve CryptoPay-Frontend",
+    "vercel-dev": "vercel dev",
+    "serve": "npx serve CryptoPay-Frontend",
+    "deploy": "npx vercel deploy --prod"
+  },
+  "keywords": [
+    "blockchain",
+    "payment",
+    "ethereum",
+    "sepolia"
+  ],
+  "author": "Trần Gia Nghĩa",
+  "license": "ISC",
+  "devDependencies": {
+    "serve": "^14.2.0",
+    "vercel": "^32.4.1"
+  }
+}

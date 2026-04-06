@@ -3,6 +3,7 @@ window.cryptoPay = {
     contractAddress: "0x3397152282E048404775bbD42a28D21D62c741F0",
     abi: [
         "function registerMerchant(string memory _name) public",
+        "function updateMerchantName(string memory _newName) public",
         "function payMerchant(address _merchantAddr) public payable",
         "function withdraw() public",
         "function getMerchantInfo(address _addr) public view returns (string memory name, uint256 balance, bool isActive)",

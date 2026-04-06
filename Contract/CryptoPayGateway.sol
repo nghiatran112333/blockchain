@@ -44,9 +44,18 @@ contract CryptoPayGateway {
     // Đăng ký Merchant mới
     function registerMerchant(string memory _name) public {
         require(!merchants[msg.sender].isActive, "Merchant already registered");
+        require(bytes(_name).length > 0, "Name cannot be empty");
         merchants[msg.sender] = Merchant(_name, payable(msg.sender), 0, true);
         merchantList.push(msg.sender);
         emit MerchantRegistered(msg.sender, _name);
+    }
+
+    // Cập nhật tên Merchant đã đăng ký
+    function updateMerchantName(string memory _newName) public {
+        require(merchants[msg.sender].isActive, "Merchant not registered");
+        require(bytes(_newName).length > 0, "Name cannot be empty");
+        merchants[msg.sender].name = _newName;
+        emit MerchantRegistered(msg.sender, _newName);
     }
 
     // Thanh toán cho Merchant (Mô phỏng quét mã QR gọi hàm này)
